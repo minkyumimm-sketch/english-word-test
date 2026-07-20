@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英単語テスト作成アプリ</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+
+<div class="app-shell no-print">
+  <header class="app-header">
+    <h1>英単語テスト作成アプリ</h1>
+    <p class="app-subtitle">Excel、またはGoogleスプレッドシートの単語データから、順位範囲・出題数を指定してテストを自動生成し、そのままブラウザで印刷できます。</p>
+  </header>
+
+  <main class="app-main">
+
+    <section class="panel" id="loadPanel">
+      <h2>1. 単語データの読み込み</h2>
+      <p class="panel-desc">先生が管理している単語データを読み込みます。列に「順位」「英語」「訳」を含む表であれば、Excel・Googleスプレッドシートのどちらでも自動で読み込みます。</p>
+
+      <fieldset class="field load-method-field">
+        <legend>データ読込方法</legend>
+        <label class="radio"><input type="radio" name="loadMethod" value="excel" checked> Excelファイル</label>
+        <label class="radio"><input type="radio" name="loadMethod" value="googleSheet"> Googleスプレッドシート</label>
+      </fieldset>
+
+      <div id="excelLoadFields">
+        <p class="panel-desc">Excelファイル（.xlsx / .xlsm）を選択してください。</p>
+        <div class="dropzone" id="dropzone">
+          <p>ここにExcelファイルをドラッグ＆ドロップ<br>または</p>
+          <label class="button" for="fileInput">ファイルを選択</label>
+          <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden>
+        </div>
+      </div>
+
+      <div id="googleSheetLoadFields" hidden>
+        <p class="panel-desc">
+          Googleスプレッドシートを「ファイル → 共有 → ウェブに公開」した状態のURL、
+          またはそのスプレッドシートの通常URL（編集画面のURL）を貼り付けてください。
+          可能な場合は自動でCSV取得用のURLに変換します。
+        </p>
+        <div class="field field-title">
+          <label for="sheetUrl">GoogleスプレッドシートのURL、または公開CSVのURL</label>
+          <input type="url" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+          <p class="field-hint" id="sheetUrlHint" hidden></p>
+        </div>
+        <button type="button" class="button button-primary" id="loadSheetButton">読み込む</button>
+      </div>
+
+      <div class="load-status" id="loadStatus" aria-live="polite"></div>
+
+      <div class="load-actions" id="loadActions" hidden>
+        <button type="button" class="button button-secondary" id="clearDataButton">読み込んだデータを消去</button>
+      </div>
+    </section>
+
+    <section class="panel material-panel" id="materialPanel">
+      <h2 class="material-panel-heading">現在の教材</h2>
+      <div class="material-info" id="materialInfo"></div>
+    </section>
+
+    <section class="panel" id="settingsPanel" hidden>
+      <h2>2. テスト条件の設定</h2>
+
+      <form id="settingsForm">
+        <div class="field-row">
+          <div class="field field-title">
+            <label for="testTitle">タイトル（任意）</label>
+            <input type="text" id="testTitle" placeholder="英単語テスト" maxlength="40">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="startRank">開始順位</label>
+            <input type="number" id="startRank" min="1" value="1" required>
+          </div>
+          <div class="field" id="endRankField">
+            <label for="endRank">終了順位</label>
+            <input type="number" id="endRank" min="1" value="100" required>
+          </div>
+          <div class="field">
+            <label for="levelFilter">レベル指定</label>
+            <select id="levelFilter">
+              <option value="">すべて</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <fieldset class="field">
+            <legend>出題方向</legend>
+            <label class="radio"><input type="radio" name="direction" value="en-ja" checked> 英語 → 日本語</label>
+            <label class="radio"><input type="radio" name="direction" value="ja-en"> 日本語 → 英語</label>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>出題順</legend>
+            <label class="radio"><input type="radio" name="order" value="rank" checked> 順位順</label>
+            <label class="radio"><input type="radio" name="order" value="random"> ランダム</label>
+          </fieldset>
+        </div>
+
+        <div class="field-row">
+          <fieldset class="field">
+            <legend>生成モード</legend>
+            <label class="radio"><input type="radio" name="mode" value="single" checked> 単発（1回分のテスト）</label>
+            <label class="radio"><input type="radio" name="mode" value="batch"> 複数日分を一括生成</label>
+          </fieldset>
+        </div>
+
+        <div class="field-row" id="singleModeFields">
+          <div class="field">
+            <label for="questionCount">問題数</label>
+            <input type="number" id="questionCount" min="1" value="50">
+          </div>
+        </div>
+
+        <div class="field-row" id="batchModeFields" hidden>
+          <div class="field">
+            <label for="chunkSize">1日あたりの順位幅</label>
+            <input type="number" id="chunkSize" min="1" value="100">
+          </div>
+          <div class="field">
+            <label for="dayCount">作成日数</label>
+            <input type="number" id="dayCount" min="1" value="5">
+          </div>
+          <div class="field">
+            <label for="questionsPerChunk">1日あたりの問題数</label>
+            <input type="number" id="questionsPerChunk" min="1" value="100">
+          </div>
+        </div>
+
+        <div class="generation-preview" id="generationPreview" hidden></div>
+
+        <p class="form-error" id="formError" role="alert" hidden></p>
+
+        <div class="form-actions">
+          <button type="submit" class="button button-primary">テストを生成する</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel" id="resultPanel" hidden>
+      <h2>3. プレビュー・印刷</h2>
+
+      <div class="result-toolbar">
+        <div class="tab-list" id="tabList"></div>
+
+        <div class="print-controls">
+          <label for="printMode">印刷対象</label>
+          <select id="printMode">
+            <option value="problem">問題のみ</option>
+            <option value="answer">解答のみ</option>
+            <option value="both">問題→解答（全日程）</option>
+          </select>
+          <button type="button" class="button button-primary" id="printButton">印刷する</button>
+        </div>
+      </div>
+
+      <div class="preview-toggle">
+        <label class="radio"><input type="radio" name="previewKind" value="problem" checked> 問題プレビュー</label>
+        <label class="radio"><input type="radio" name="previewKind" value="answer"> 解答プレビュー</label>
+      </div>
+
+      <div class="preview-area" id="previewArea"></div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>Ver2.2 — 学習塾・教室向け 英単語テスト作成ツール</p>
+  </footer>
+</div>
+
+<!-- 印刷対象。screen表示ではJSで表示/非表示を制御し、印刷時は printMode に応じて print.css が制御する -->
+<div id="printRoot" aria-hidden="true"></div>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="js/utils/dom.js"></script>
+<script src="js/utils/validators.js"></script>
+<script src="js/utils/csv.js"></script>
+<script src="js/state.js"></script>
+<script src="js/wordRowParser.js"></script>
+<script src="js/excelLoader.js"></script>
+<script src="js/googleSheetLoader.js"></script>
+<script src="js/wordRepository.js"></script>
+<script src="js/testGenerator.js"></script>
+<script src="js/layoutRules.js"></script>
+<script src="js/renderer/formView.js"></script>
+<script src="js/renderer/resultView.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

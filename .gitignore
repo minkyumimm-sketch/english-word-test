@@ -1,0 +1,8 @@
+# OS/エディタが生成する不要ファイル
+.DS_Store
+Thumbs.db
+*.swp
+
+# Excelの一時ロックファイル
+~$*.xlsx
+~$*.xlsm

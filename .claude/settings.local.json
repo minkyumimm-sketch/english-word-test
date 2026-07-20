@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command python,python3,node -ErrorAction SilentlyContinue)",
+      "PowerShell(python -c \"import openpyxl; print\\('ok'\\)\" 2>&1)",
+      "Skill(run)",
+      "Skill(run:*)"
+    ]
+  }
+}

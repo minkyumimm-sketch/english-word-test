@@ -1,0 +1,70 @@
+/* 印刷時のみ適用。画面用スタイル(style.css)を上書きする。
+   用紙自体の余白(@page)は固定値のままとし、問題数に応じた「余白の広さ」の演出は
+   .test-page の padding（--tp-padding, layoutRules.js が算出）で行う。
+   @page margin を要素ごとに動的に変える手段(named page等)はブラウザ間の対応差が
+   大きく印刷崩れの原因になり得るため、Ver1.1では採用しない。 */
+
+@page {
+  size: A4;
+  margin: 10mm 10mm;
+}
+
+body {
+  background: #fff;
+}
+
+.no-print,
+.app-shell {
+  display: none !important;
+}
+
+#printRoot {
+  display: block !important;
+}
+
+.test-page {
+  display: block;
+  page-break-after: always;
+  padding: var(--tp-padding, 10mm);
+}
+
+.test-page:last-child {
+  page-break-after: auto;
+}
+
+/* 印刷対象の絞り込み（問題のみ／解答のみ／両方） */
+body[data-print-mode="problem"] .test-page[data-kind="answer"] {
+  display: none !important;
+}
+
+body[data-print-mode="answer"] .test-page[data-kind="problem"] {
+  display: none !important;
+}
+
+.page-header {
+  margin-bottom: calc(var(--tp-padding, 10mm) * 0.5);
+}
+
+.page-title {
+  font-size: calc(var(--tp-font-size, 11pt) + 4pt);
+}
+
+.page-direction,
+.page-meta {
+  font-size: calc(var(--tp-font-size, 11pt) - 1pt);
+}
+
+.item-list {
+  column-count: var(--tp-columns, 2);
+  column-gap: var(--tp-column-gap, 10mm);
+}
+
+.item-row {
+  font-size: var(--tp-font-size, 11pt);
+  line-height: var(--tp-line-height, 1.6);
+  padding: calc((var(--tp-line-height, 1.6) - 1) * 0.5em) 0;
+}
+
+.item-blank::after {
+  content: "（　　　　　　）";
+}

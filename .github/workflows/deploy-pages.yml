@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+# src/ 配下（アプリ本体）を、そのままGitHub Pagesの公開アーティファクトとしてアップロードする。
+# ファイルの複製・生成ステップは持たない（コピー漏れによる公開版と最新版のズレを防ぐため）。
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "src/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時デプロイを避ける。実行中のデプロイはキャンセルせず完了を待つ。
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload src/ as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "src"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
