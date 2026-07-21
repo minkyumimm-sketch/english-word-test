@@ -1,12 +1,16 @@
 name: Deploy to GitHub Pages
 
-# src/ 配下（アプリ本体）を、そのままGitHub Pagesの公開アーティファクトとしてアップロードする。
-# ファイルの複製・生成ステップは持たない（コピー漏れによる公開版と最新版のズレを防ぐため）。
+# アプリ本体（index.html / css / js / lib）のみをステージングしてGitHub Pagesへ
+# 公開する。Data/（単語データExcel）・docs/・README.md等はステージング対象に
+# 含めないため、公開サイトからは配信されない（教材データを非公開に保つため）。
 on:
   push:
     branches: ["main"]
     paths:
-      - "src/**"
+      - "index.html"
+      - "css/**"
+      - "js/**"
+      - "lib/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch: {}
 
@@ -33,10 +37,17 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload src/ as Pages artifact
+      - name: Stage public files only
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -r css js lib _site/
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "src"
+          path: "_site"
 
       - name: Deploy to GitHub Pages
         id: deployment

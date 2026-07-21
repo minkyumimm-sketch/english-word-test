@@ -147,39 +147,47 @@ VBAには依存しない。
 ## 技術スタック
 
 - ビルドツールなしの静的HTML/CSS/JS。フレームワーク不使用。
-- Excel解析は SheetJS（`src/lib/xlsx.full.min.js`）をオフラインでvendor済み。CDN依存にしない。
+- Excel解析は SheetJS（`lib/xlsx.full.min.js`）をオフラインでvendor済み。CDN依存にしない。
 - **ES modules は使わない。** `<script type="module">` はChrome/Edgeで`file://`経由だと
   CORSエラーになり、ダブルクリックで開く運用が壊れるため。代わりに`window.WordTestApp`
   というグローバル名前空間にIIFEで機能を吊るす「名前空間パターン」を使う。
-  `src/index.html`の`<script>`読み込み順（utils(dom/validators/csv) → state →
+  `index.html`の`<script>`読み込み順（utils(dom/validators/csv) → state →
   wordRowParser → excelLoader → googleSheetLoader → wordRepository →
   testGenerator → layoutRules → renderer → main）が依存関係の順序なので、
   ファイルを追加した場合はこの順序を崩さないこと。
-- `node server.js`（追加パッケージ不要の素朴な静的サーバー、`src/`配下を配信）でも起動可能。
-  `file://`で直接開く運用と両方をサポートする。
+- `node server.js`（追加パッケージ不要の素朴な静的サーバー、リポジトリ直下を配信。
+  ただし配信を許可するトップレベル項目は`index.html`/`css`/`js`/`lib`のみに限定して
+  おり、`Data/`・`docs/`・`.git`等は配信しない）でも起動可能。`file://`で直接開く運用と
+  両方をサポートする。
+- **アプリ本体（`index.html`/`css`/`js`/`lib`）はリポジトリ直下に配置する（Ver2.3）。**
+  以前は`src/`フォルダにまとめていたが、GitHub PagesのSourceが「Deploy from a branch」
+  （リポジトリ直下にindex.htmlが無いとJekyllがREADME.mdを代わりに表示してしまう）の
+  場合に対応するため、直下配置に変更した。詳細は`docs/DESIGN.md`の「8. GitHub Pagesでの
+  公開」を参照。
 
 ## フォルダ構成
 
 ```
-.github/workflows/deploy-pages.yml  GitHub Pagesへ src/ を自動公開するワークフロー（Ver1.3）
-Data/                 先生が編集する単語データExcel（既存資産。原則触らない）
-docs/DESIGN.md         詳細設計（データモデル・モジュール責務・拡張ポイント）
-src/index.html         画面エントリーポイント
-src/css/style.css      画面用スタイル
-src/css/print.css      印刷専用スタイル（@media print）
-src/lib/xlsx.full.min.js  SheetJS（vendor済み、CDNから取得しない）
-src/js/state.js         アプリ状態（単語データ・生成結果・前回設定・読込方式）の保持
-src/js/wordRowParser.js 列判定・行検証の共通ロジック（Excel/Sheets共通、Ver2.0）
-src/js/excelLoader.js   Excel(.xlsm/.xlsx) → 行データへの変換
-src/js/googleSheetLoader.js Googleスプレッドシート → CSV取得・行データへの変換（Ver2.0）
-src/js/wordRepository.js 単語データの検索・絞り込み
-src/js/testGenerator.js  出題セット(TestSet)の生成ロジック
-src/js/layoutRules.js    問題数・文字数に応じた印刷レイアウト自動決定（Ver1.1）
-src/js/renderer/formView.js  設定フォーム・現在の教材パネルのDOM操作
-src/js/renderer/resultView.js プレビュー・印刷用DOMの構築
-src/js/main.js           上記モジュールの配線（エントリーポイント）
-src/js/utils/            dom.js（DOMヘルパー）, validators.js（入力検証）, csv.js（CSVパーサー）
-server.js                依存なしの簡易静的サーバー
+.github/workflows/deploy-pages.yml  GitHub Pagesへ本体一式を自動公開するワークフロー（Ver1.3、Ver2.3で構成変更）
+.nojekyll             GitHub PagesのJekyll処理を無効化する空ファイル（Ver2.3）
+index.html             画面エントリーポイント
+css/style.css          画面用スタイル
+css/print.css          印刷専用スタイル（@media print）
+lib/xlsx.full.min.js   SheetJS（vendor済み、CDNから取得しない）
+js/state.js            アプリ状態（単語データ・生成結果・前回設定・読込方式）の保持
+js/wordRowParser.js    列判定・行検証の共通ロジック（Excel/Sheets共通、Ver2.0）
+js/excelLoader.js      Excel(.xlsm/.xlsx) → 行データへの変換
+js/googleSheetLoader.js Googleスプレッドシート → CSV取得・行データへの変換（Ver2.0）
+js/wordRepository.js   単語データの検索・絞り込み
+js/testGenerator.js    出題セット(TestSet)の生成ロジック
+js/layoutRules.js      問題数・文字数に応じた印刷レイアウト自動決定（Ver1.1）
+js/renderer/formView.js  設定フォーム・現在の教材パネルのDOM操作
+js/renderer/resultView.js プレビュー・印刷用DOMの構築
+js/main.js             上記モジュールの配線（エントリーポイント）
+js/utils/              dom.js（DOMヘルパー）, validators.js（入力検証）, csv.js（CSVパーサー）
+Data/                  先生が編集する単語データExcel（既存資産。原則触らない。Gitでは`.gitignore`により非追跡）
+docs/DESIGN.md          詳細設計（データモデル・モジュール責務・拡張ポイント）
+server.js               依存なしの簡易静的サーバー
 ```
 
 ## データモデル
@@ -244,12 +252,16 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   データ消去ボタン（`読み込んだデータを消去`）は単語データのみを消去し、
   保存済みのテスト条件は消さない（単語データと条件設定は別の関心事という設計判断）。
   詳細は `docs/DESIGN.md` の「7. 前回設定の自動保存・復元」を参照。
-- GitHub Pages公開（Ver1.3）は `src/` フォルダをそのまま公開対象にする方式
-  （`.github/workflows/deploy-pages.yml`）。公開用に`docs/`へコピーする方式や
-  リポジトリ直下への移動は採用していない（`src/`構成・ローカル起動方法を変更したくない
-  ため）。この前提上、`src/index.html`および配下のCSS/JSでは`/`始まりの絶対パスを
-  使わないこと（GitHub Pagesのプロジェクトサイトはサブパス配下で配信されるため、
-  絶対パスを使うとパスが壊れる）。詳細は `docs/DESIGN.md` の「8. GitHub Pagesでの
+- GitHub Pages公開はVer1.3で`src/`フォルダをそのまま公開対象にする方式を採用したが、
+  GitHub PagesのSourceが「Deploy from a branch」の場合にリポジトリ直下へindex.htmlが
+  無いとJekyllが`README.md`をホームページとして表示してしまう問題が判明したため、
+  Ver2.3でアプリ本体（`index.html`/`css`/`js`/`lib`）を**リポジトリ直下**へ移動した。
+  `.github/workflows/deploy-pages.yml`（GitHub Actionsで公開する場合の経路）も、
+  リポジトリ直下の該当フォルダのみを一時ディレクトリへステージングしてから公開する形に
+  更新済み（`Data/`・`docs/`等はステージング対象に含めないため公開されない）。
+  リポジトリ直下・配下のCSS/JSでは`/`始まりの絶対パスを使わないこと（GitHub Pagesの
+  プロジェクトサイトはサブパス配下で配信されるため、絶対パスを使うとパスが壊れる。
+  この前提はVer1.3から変更なし）。詳細は `docs/DESIGN.md` の「8. GitHub Pagesでの
   公開」、公開手順は `README.md` の「12. GitHub Pagesでの公開（管理者向け）」を参照。
 - データ読込はExcel/Googleスプレッドシートの二本立て（Ver2.0）。列判定・行検証の
   ロジックは`wordRowParser.js`に一本化してあり、`excelLoader.js`・
