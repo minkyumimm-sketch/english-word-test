@@ -511,3 +511,9 @@ body {
   order: 5;
   margin: 0;
 }
+
+/* 補足部分（丸括弧書き）の縮小（print.cssの.item-supplementと完全に同じ内容、Ver2.6）。
+   理由は上のヘッダー横並び化と同じ: サンドボックスでの高さ実測にも反映させるため。 */
+#printFitSandbox .item-supplement {
+  font-size: 0.8em;
+}

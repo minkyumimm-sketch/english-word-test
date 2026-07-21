@@ -153,7 +153,10 @@
    * 見つからない場合（下限まで下げても幅が収まらない極端に長い項目がある場合）はnullを返す。
    */
   function tryTwoColumns(items, baseLayout) {
-    var maxWidth = layoutRules.computeMaxItemWidth(items);
+    // 幅の判定には印刷時の補足部分縮小(Ver2.6)を織り込んだ見積もりを使う。
+    // 実際に印刷される見た目（.item-supplementが小さいフォントで表示される）に
+    // 合わせて2列化の可否を判定するため。
+    var maxWidth = layoutRules.computeMaxItemWidthPrintAware(items);
     var padding = baseLayout.paddingMm;
     var columnGap = layoutRules.computeColumnGap(2, padding);
     var fontSize = baseLayout.fontSizePt;

@@ -119,6 +119,15 @@ body[data-print-mode="answer"] .test-page[data-kind="problem"] {
   content: "（　　　　　　）";
 }
 
+/* 丸括弧書きの補足説明（例:「（Shall I〜?/Shall we～？で）」）を印刷時のみ
+   少し小さいフォントで表示し、横幅を抑える（Ver2.6）。文字は省略しない
+   （テキストの一部を隠すと解答用紙の正確性を損なうため、文字サイズのみ縮小する）。
+   画面プレビュー(style.css)側は無変更。比率はlayoutRules.jsの
+   SUPPLEMENT_WIDTH_RATIOと一致させること（幅の見積もりと実際の見た目をそろえるため）。 */
+.item-supplement {
+  font-size: 0.8em;
+}
+
 /* 計測用サンドボックスは実際の印刷には不要（計測は画面表示時に完了している） */
 #printFitSandbox {
   display: none !important;

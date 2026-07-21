@@ -104,6 +104,70 @@
     return max;
   }
 
+  // 印刷時のみ、丸括弧書きの補足説明（例:「（Shall I〜?/Shall we～？で）」）を
+  // 少し小さいフォントサイズで表示して横幅を抑える（Ver2.6）。この比率は
+  // print.css/style.cssの `.item-supplement { font-size: ... }` と
+  // 一致させること（片方だけ変更すると、幅の見積もりと実際の見た目がずれる）。
+  var SUPPLEMENT_WIDTH_RATIO = 0.8; // ブラウザの<small>相当(約83%)に近い、控えめな縮小比率
+  var SUPPLEMENT_PATTERN = /[（(][^）)]*[）)]/g;
+
+  /**
+   * 文字列を「補足部分（丸括弧書き）」と「それ以外」のセグメントに分割する。
+   * 補足部分かどうかだけを持つ配列を返す。DOM操作は行わない。
+   * @param {string} text
+   * @returns {Array<{text:string, supplement:boolean}>}
+   */
+  function splitSupplementSegments(text) {
+    var str = String(text == null ? "" : text);
+    var segments = [];
+    var lastIndex = 0;
+    var match;
+    SUPPLEMENT_PATTERN.lastIndex = 0;
+    while ((match = SUPPLEMENT_PATTERN.exec(str)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ text: str.slice(lastIndex, match.index), supplement: false });
+      }
+      segments.push({ text: match[0], supplement: true });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < str.length) {
+      segments.push({ text: str.slice(lastIndex), supplement: false });
+    }
+    if (segments.length === 0) {
+      segments.push({ text: str, supplement: false });
+    }
+    return segments;
+  }
+
+  /**
+   * estimateDisplayWidthと同じ概算だが、補足部分（丸括弧書き）は印刷時に
+   * 小さいフォントで表示される前提で、幅をSUPPLEMENT_WIDTH_RATIO倍に割り引く。
+   * 印刷1ページ収まり調整（printFitting.tryTwoColumns）が、2列に戻せるかどうかを
+   * 判定する際にのみ使う（layoutRules.computeLayoutの基本判定はscreen/print共通の
+   * ままにするため、estimateDisplayWidthはそのまま変更しない）。
+   */
+  function estimateDisplayWidthWithSupplement(text) {
+    var segments = splitSupplementSegments(text);
+    var width = 0;
+    for (var i = 0; i < segments.length; i++) {
+      var segWidth = estimateDisplayWidth(segments[i].text);
+      width += segments[i].supplement ? segWidth * SUPPLEMENT_WIDTH_RATIO : segWidth;
+    }
+    return width;
+  }
+
+  function computeMaxItemWidthPrintAware(items) {
+    var max = 0;
+    for (var i = 0; i < items.length; i++) {
+      max = Math.max(
+        max,
+        estimateDisplayWidthWithSupplement(items[i].prompt),
+        estimateDisplayWidthWithSupplement(items[i].answer)
+      );
+    }
+    return max;
+  }
+
   /**
    * 出題セットの items から、印刷・プレビュー両方に適用するレイアウトパラメータを算出する。
    * 問題ページ・解答ページとも同じ items から算出した同一の値を使うため、
@@ -163,5 +227,9 @@
     estimateColumnCapacityUnits: estimateColumnCapacityUnits,
     computeColumnGap: computeColumnGap,
     computeMaxItemWidth: computeMaxItemWidth,
+    splitSupplementSegments: splitSupplementSegments,
+    estimateDisplayWidthWithSupplement: estimateDisplayWidthWithSupplement,
+    computeMaxItemWidthPrintAware: computeMaxItemWidthPrintAware,
+    SUPPLEMENT_WIDTH_RATIO: SUPPLEMENT_WIDTH_RATIO,
   };
 })();

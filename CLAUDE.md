@@ -299,7 +299,7 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   `<input type="file">`は同じファイルを連続選択すると`change`が発火しないブラウザの仕様が
   あるため、`formView.js`の`change`リスナーで処理後に`fileInput.value = ""`へリセットして
   いる（この対策を消さないこと）。詳細は `docs/DESIGN.md` の「10. 現在の教材表示」を参照。
-- 印刷1ページ収まり調整（Ver2.4、Ver2.5で拡張）は`layoutRules.js`（問題数段階ベースの
+- 印刷1ページ収まり調整（Ver2.4、Ver2.5・Ver2.6で拡張）は`layoutRules.js`（問題数段階ベースの
   基本レイアウト、DOM非依存）とは別ファイル`printFitting.js`に実装している。DOM計測
   （画面外サンドボックス`#printFitSandbox`に実際の`.test-page`を組み立てて
   `getBoundingClientRect()`で高さを実測する）を伴うため、`layoutRules.js`の
@@ -338,3 +338,23 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   ごとに独立して実行され状態を共有しないため、日によって単語の長さが異なれば
   列数・縮小率が日ごとに異なる結果になることがある（各日を独立に最適化した結果であり、
   バグではない）。
+- 長文の補足部分（丸括弧書き）の印刷時縮小（Ver2.6）は、②2列復帰の実効性を高めるための
+  追加改善で、`layoutRules.splitSupplementSegments(text)`が丸括弧（全角`（）`・半角`()`）
+  で囲まれた部分を「補足」、それ以外を「本文」に分割する（DOM非依存の純粋関数）。
+  `resultView.js`の`buildSupplementNodes()`が、分割結果をもとに補足部分だけ
+  `<span class="item-supplement">`でラップする（`item-prompt`・`item-answer`の両方に
+  適用）。**文字列そのものは変更しない**（truncate・省略は行わない。解答の正確性を
+  損なわないため、要件で明示的に「省略ではなく縮小」の方式が選ばれている）。
+  `.item-supplement`のフォントサイズ縮小(`font-size:0.8em`)は`print.css`にのみ書き、
+  `style.css`（画面プレビュー）には書かない。比率は`layoutRules.js`の
+  `SUPPLEMENT_WIDTH_RATIO`（0.8、ブラウザ標準の`<small>`相当）で定義し、
+  `estimateDisplayWidthWithSupplement`/`computeMaxItemWidthPrintAware`という
+  「補足部分の幅をこの比率で割り引いた」版の幅推定を追加した。`printFitting.
+  tryTwoColumns()`は、通常の`computeMaxItemWidth`ではなくこちらを使うことで、
+  2列復帰の可否判定に縮小効果を織り込んでいる（`layoutRules.computeLayout()`自体、
+  screen/print共通の基本判定は変更していない）。ヘッダー横並び化と同じ理由で、
+  `style.css`に`#printFitSandbox .item-supplement { font-size: 0.8em; }`という
+  `print.css`と全く同じ内容のルールを複製している（サンドボックスでの高さ実測にも
+  反映させるため）。丸括弧で囲まれていない付随文字列（読みが直接連結された訳文等、
+  `docs/DESIGN.md`11章に既知の制約として記載）は対象外で、引き続き縮小できない
+  ケースが残り得る。

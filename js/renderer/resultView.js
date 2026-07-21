@@ -33,6 +33,18 @@
   }
 
   /**
+   * テキストを、丸括弧書きの補足部分とそれ以外のノード列に分割する。
+   * 補足部分は`.item-supplement`でラップし、印刷時のみ少し小さいフォントで
+   * 表示する（screen側は無変更、Ver2.6）。文字列そのものは一切変更しない
+   * （省略・truncateはしない）ため、情報の欠落は起きない。
+   */
+  function buildSupplementNodes(text) {
+    return layoutRules.splitSupplementSegments(text).map(function (segment) {
+      return segment.supplement ? dom.el("span", { class: "item-supplement" }, [segment.text]) : segment.text;
+    });
+  }
+
+  /**
    * 与えられたlayout(--tp-*変数のもとになる値)で、1セット分のページ要素
    * (問題 or 解答)のDOMを組み立てる。印刷1ページ収まり調整(printFitting.js)が
    * 候補レイアウトを画面外で試作・計測する際にも同じ関数を使う
@@ -46,9 +58,9 @@
     testSet.items.forEach(function (item) {
       var row = dom.el("div", { class: "item-row" }, [
         dom.el("span", { class: "item-no", text: item.no + "." }),
-        dom.el("span", { class: "item-prompt", text: item.prompt }),
+        dom.el("span", { class: "item-prompt" }, buildSupplementNodes(item.prompt)),
         isAnswer
-          ? dom.el("span", { class: "item-answer", text: item.answer })
+          ? dom.el("span", { class: "item-answer" }, buildSupplementNodes(item.answer))
           : dom.el("span", { class: "item-blank" }),
       ]);
       itemsList.appendChild(row);
