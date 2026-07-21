@@ -8,6 +8,7 @@
   var WordTestApp = (window.WordTestApp = window.WordTestApp || {});
   var dom = WordTestApp.dom;
   var layoutRules = WordTestApp.layoutRules;
+  var printFitting = WordTestApp.printFitting;
 
   var els = {};
   var currentTestSets = [];
@@ -32,11 +33,13 @@
   }
 
   /**
-   * 1セット分のページ要素(問題 or 解答)を構築する。
+   * 与えられたlayout(--tp-*変数のもとになる値)で、1セット分のページ要素
+   * (問題 or 解答)のDOMを組み立てる。印刷1ページ収まり調整(printFitting.js)が
+   * 候補レイアウトを画面外で試作・計測する際にも同じ関数を使う
+   * (計測結果と実際の表示がずれないようにするため)。
    */
-  function buildPageElement(testSet, kind) {
+  function buildPageDom(testSet, kind, layout) {
     var isAnswer = kind === "answer";
-    var layout = layoutRules.computeLayout(testSet.items);
     var title = (currentTitle && currentTitle.trim()) || DEFAULT_TITLE;
 
     var itemsList = dom.el("div", { class: "item-list" });
@@ -70,13 +73,36 @@
       "--tp-font-size:" + layout.fontSizePt + "pt;" +
       "--tp-line-height:" + layout.lineHeight + ";" +
       "--tp-padding:" + layout.paddingMm + "mm;" +
-      "--tp-column-gap:" + layout.columnGapMm + "mm;";
+      "--tp-column-gap:" + layout.columnGapMm + "mm;" +
+      "--tp-row-gap-factor:" + (layout.rowGapFactor != null ? layout.rowGapFactor : 1) + ";" +
+      "--tp-section-gap-factor:" + (layout.sectionGapFactor != null ? layout.sectionGapFactor : 1) + ";";
 
     return dom.el(
       "div",
       { class: "test-page", dataset: { setId: testSet.id, kind: kind }, style: layoutStyle },
       [header, itemsList]
     );
+  }
+
+  /**
+   * 1セット分のページ要素(問題 or 解答)を構築する。まず問題数段階ベースの
+   * 基本レイアウト(layoutRules.computeLayout)を求め、印刷1ページ収まり調整
+   * (printFitting.fit)で実測しながら「はみ出す場合のみ・必要最小限」だけ縮小する。
+   * 問題ページ・解答ページは内容(空欄 or 実際の解答文字列)が異なり高さも変わり得るため、
+   * それぞれ個別に計測・調整する（呼び出しごとに1ページ分だけを対象にしているため、
+   * 自然に問題/解答が別々に扱われる）。
+   */
+  function buildPageElement(testSet, kind) {
+    var baseLayout = layoutRules.computeLayout(testSet.items);
+    var fitResult = printFitting.fit(testSet, baseLayout, function (layout) {
+      return buildPageDom(testSet, kind, layout);
+    });
+
+    var pageEl = buildPageDom(testSet, kind, fitResult.layout);
+    pageEl.dataset.fitScaled = String(fitResult.scaled);
+    pageEl.dataset.fitWithinOnePage = String(fitResult.fitsOnePage);
+    pageEl.dataset.fitHeightMm = String(Math.round(fitResult.heightMm * 10) / 10);
+    return pageEl;
   }
 
   function renderTabs() {

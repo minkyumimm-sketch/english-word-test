@@ -151,5 +151,12 @@
   WordTestApp.layoutRules = {
     estimateDisplayWidth: estimateDisplayWidth,
     computeLayout: computeLayout,
+    // 印刷1ページ収まり調整(printFitting.js)が、このファイルと矛盾しない
+    // 定数(用紙サイズ・可読性下限)を再利用するために公開する。
+    PAGE_WIDTH_MM: PAGE_WIDTH_MM,
+    PAGE_MARGIN_MM: PAGE_MARGIN_MM,
+    PRINTABLE_WIDTH_MM: PRINTABLE_WIDTH_MM,
+    MIN_FONT_SIZE: MIN_FONT_SIZE,
+    MIN_LINE_HEIGHT: MIN_LINE_HEIGHT,
   };
 })();

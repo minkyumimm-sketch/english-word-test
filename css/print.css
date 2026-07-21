@@ -42,7 +42,7 @@ body[data-print-mode="answer"] .test-page[data-kind="problem"] {
 }
 
 .page-header {
-  margin-bottom: calc(var(--tp-padding, 10mm) * 0.5);
+  margin-bottom: calc(var(--tp-padding, 10mm) * 0.5 * var(--tp-section-gap-factor, 1));
 }
 
 .page-title {
@@ -62,9 +62,14 @@ body[data-print-mode="answer"] .test-page[data-kind="problem"] {
 .item-row {
   font-size: var(--tp-font-size, 11pt);
   line-height: var(--tp-line-height, 1.6);
-  padding: calc((var(--tp-line-height, 1.6) - 1) * 0.5em) 0;
+  padding: calc((var(--tp-line-height, 1.6) - 1) * 0.5em * var(--tp-row-gap-factor, 1)) 0;
 }
 
 .item-blank::after {
   content: "（　　　　　　）";
+}
+
+/* 計測用サンドボックスは実際の印刷には不要（計測は画面表示時に完了している） */
+#printFitSandbox {
+  display: none !important;
 }

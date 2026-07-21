@@ -371,6 +371,13 @@ body {
   padding: var(--tp-padding, 12mm);
 }
 
+/* header〜item-list間の間隔(セクション間隔)。paddingを基準にしつつ、
+   印刷1ページ収まり調整(printFitting.js)が --tp-section-gap-factor だけを
+   個別に縮小できるようにしている（paddingそのものは別レバーとして温存するため）。 */
+.page-header {
+  margin-bottom: calc(var(--tp-padding, 12mm) * 0.5 * var(--tp-section-gap-factor, 1));
+}
+
 .page-header-top {
   display: flex;
   justify-content: space-between;
@@ -414,7 +421,9 @@ body {
   gap: 8px;
   align-items: flex-start;
   break-inside: avoid;
-  padding: calc((var(--tp-line-height, 1.6) - 1) * 0.5em) 0;
+  /* 行間(line-height)由来の上下paddingを基準値としつつ、印刷1ページ収まり調整が
+     --tp-row-gap-factor で問題間隔だけを個別に縮小できるようにしている。 */
+  padding: calc((var(--tp-line-height, 1.6) - 1) * 0.5em * var(--tp-row-gap-factor, 1)) 0;
   font-size: var(--tp-font-size, 11pt);
   line-height: var(--tp-line-height, 1.6);
 }
@@ -441,4 +450,18 @@ body {
 /* 印刷用DOMは画面上には出さない */
 #printRoot {
   display: none;
+}
+
+/* 印刷1ページ収まり調整(printFitting.js)の計測専用サンドボックス。
+   画面には見えないが display:none にはしない(レイアウト計算が必要なため、
+   visibility:hidden + 画面外配置で見えなくする)。幅は印刷可能領域の幅
+   (layoutRules.jsのPRINTABLE_WIDTH_MMと一致させること)に固定し、
+   プレビューの表示幅に左右されずに印刷結果と同じ折り返しで高さを測る。 */
+#printFitSandbox {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  left: -99999px;
+  top: 0;
+  width: 190mm;
 }

@@ -153,8 +153,8 @@ VBAには依存しない。
   というグローバル名前空間にIIFEで機能を吊るす「名前空間パターン」を使う。
   `index.html`の`<script>`読み込み順（utils(dom/validators/csv) → state →
   wordRowParser → excelLoader → googleSheetLoader → wordRepository →
-  testGenerator → layoutRules → renderer → main）が依存関係の順序なので、
-  ファイルを追加した場合はこの順序を崩さないこと。
+  testGenerator → layoutRules → printFitting → renderer → main）が依存関係の
+  順序なので、ファイルを追加した場合はこの順序を崩さないこと。
 - `node server.js`（追加パッケージ不要の素朴な静的サーバー、リポジトリ直下を配信。
   ただし配信を許可するトップレベル項目は`index.html`/`css`/`js`/`lib`のみに限定して
   おり、`Data/`・`docs/`・`.git`等は配信しない）でも起動可能。`file://`で直接開く運用と
@@ -181,6 +181,7 @@ js/googleSheetLoader.js Googleスプレッドシート → CSV取得・行デー
 js/wordRepository.js   単語データの検索・絞り込み
 js/testGenerator.js    出題セット(TestSet)の生成ロジック
 js/layoutRules.js      問題数・文字数に応じた印刷レイアウト自動決定（Ver1.1）
+js/printFitting.js     印刷1ページ収まり調整（DOM計測して必要最小限だけ自動縮小、Ver2.4）
 js/renderer/formView.js  設定フォーム・現在の教材パネルのDOM操作
 js/renderer/resultView.js プレビュー・印刷用DOMの構築
 js/main.js             上記モジュールの配線（エントリーポイント）
@@ -235,8 +236,10 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   `[hidden]{display:none!important}`が全体の保険になっているので、新規要素にも
   この前提で問題ない。
 - 印刷レイアウトは `.test-page` / `.item-list` / `.item-row` のクラス構造で
-  プレビューと印刷を共通化している（`resultView.js`の`buildPageElement`）。
-  レイアウトを変える場合はプレビューと印刷の見た目がずれないようこの共通化を維持する。
+  プレビューと印刷を共通化している（`resultView.js`の`buildPageDom`。
+  `buildPageElement`はこれに加えて`printFitting.fit`による1ページ収まり調整を
+  呼び出すラッパー、Ver2.4）。レイアウトを変える場合はプレビューと印刷の見た目が
+  ずれないようこの共通化を維持する。
 - 新しい出題形式（4択・穴埋め等）を将来追加する場合は、`testGenerator.js`に
   生成関数を追加し、`resultView.js`のページ構築を出題形式ごとに分岐できる形に
   拡張する想定（Ver1では未実装）。
@@ -296,3 +299,22 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   `<input type="file">`は同じファイルを連続選択すると`change`が発火しないブラウザの仕様が
   あるため、`formView.js`の`change`リスナーで処理後に`fileInput.value = ""`へリセットして
   いる（この対策を消さないこと）。詳細は `docs/DESIGN.md` の「10. 現在の教材表示」を参照。
+- 印刷1ページ収まり調整（Ver2.4）は`layoutRules.js`（問題数段階ベースの基本レイアウト、
+  DOM非依存）とは別ファイル`printFitting.js`に実装している。DOM計測（画面外サンドボックス
+  `#printFitSandbox`に実際の`.test-page`を組み立てて`getBoundingClientRect()`で高さを
+  実測する）を伴うため、`layoutRules.js`の「DOM操作をしない純粋関数」という設計原則を
+  壊さないよう意図的に分離した。優先順位は「①読みやすさ ②可能なら1ページ ③見た目」で、
+  余白(`paddingMm`)→セクション間隔(`--tp-section-gap-factor`)→問題間隔
+  (`--tp-row-gap-factor`)→行間(`lineHeight`)→フォントサイズ(`fontSizePt`)の順に
+  1段ずつ縮小しながら再計測する（読みやすさに影響しないレバーから先に使い切り、
+  文字そのものに関わるレバーは最後の手段にする設計）。フォントサイズ・行間の下限は
+  `layoutRules.js`の`MIN_FONT_SIZE`/`MIN_LINE_HEIGHT`をexportして共有し、二重基準に
+  ならないようにしている。全レバーを下限まで縮小しても収まらない場合は無理に縮小せず
+  複数ページを許容する（`fitsOnePage:false`）。`--tp-row-gap-factor`/
+  `--tp-section-gap-factor`は、既存の`--tp-line-height`/`--tp-padding`由来のcalc()に
+  掛け算する形で追加した（factor=1のとき既存の見た目と完全に一致するため、「収まって
+  いるものは変更しない」という要件を自然に満たす）。`.test-page`の列数(`columns`)は
+  `layoutRules.js`の安全側補正のみで決め、`printFitting.js`側では変更しない（既存の
+  長文安全策の責務を侵さないため）。計測サンドボックスの幅は印刷可能幅190mm
+  （`layoutRules.PRINTABLE_WIDTH_MM`と同じ）に固定しており、画面プレビューの表示幅とは
+  独立している（プレビューと印刷のWYSIWYGを保つため、常に印刷時と同じ折り返しで計測する）。

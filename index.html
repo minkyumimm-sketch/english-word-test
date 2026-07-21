@@ -172,12 +172,17 @@
   </main>
 
   <footer class="app-footer">
-    <p>Ver2.3 — 学習塾・教室向け 英単語テスト作成ツール</p>
+    <p>Ver2.4 — 学習塾・教室向け 英単語テスト作成ツール</p>
   </footer>
 </div>
 
 <!-- 印刷対象。screen表示ではJSで表示/非表示を制御し、印刷時は printMode に応じて print.css が制御する -->
 <div id="printRoot" aria-hidden="true"></div>
+
+<!-- 印刷1ページ収まり調整(printFitting.js)が、実際の.test-pageを画面外で
+     組み立てて高さを計測するためのサンドボックス。常にDOM上には存在するが、
+     style.cssにより画面上には見えない(visibility:hidden)。 -->
+<div id="printFitSandbox" aria-hidden="true"></div>
 
 <script src="lib/xlsx.full.min.js"></script>
 <script src="js/utils/dom.js"></script>
@@ -190,6 +195,7 @@
 <script src="js/wordRepository.js"></script>
 <script src="js/testGenerator.js"></script>
 <script src="js/layoutRules.js"></script>
+<script src="js/printFitting.js"></script>
 <script src="js/renderer/formView.js"></script>
 <script src="js/renderer/resultView.js"></script>
 <script src="js/main.js"></script>
