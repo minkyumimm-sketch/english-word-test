@@ -103,9 +103,12 @@
    * 問題ページ・解答ページは内容(空欄 or 実際の解答文字列)が異なり高さも変わり得るため、
    * それぞれ個別に計測・調整する（呼び出しごとに1ページ分だけを対象にしているため、
    * 自然に問題/解答が別々に扱われる）。
+   * 列数・文字サイズの幅安全判定は、実際に抽選されたtestSet.itemsではなく
+   * testSet.poolItems（出題範囲の全単語）を基準にする。ランダム出題で毎回違う単語が
+   * 選ばれても印刷レイアウトが変わらないようにするため（Ver2.7）。
    */
   function buildPageElement(testSet, kind) {
-    var baseLayout = layoutRules.computeLayout(testSet.items);
+    var baseLayout = layoutRules.computeLayout(testSet.items, testSet.poolItems);
     var fitResult = printFitting.fit(testSet, baseLayout, function (layout) {
       return buildPageDom(testSet, kind, layout);
     });

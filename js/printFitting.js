@@ -23,8 +23,13 @@
  *   （要件: 「読めなくなるなら縮小しない」）。
  * - 問題ページ・解答ページはこの関数の呼び出し単位（testSet×kindごと）で独立して
  *   実行されるため、列数・縮小率は常にページごとに個別計算される。複数日分の
- *   バッチ生成でも、日ごとの単語の長さの違いによって列数・縮小結果が日によって
- *   異なることは起こり得るが、それは各ページを独立に最適化した結果である。
+ *   バッチ生成でも、日（順位範囲）ごとの単語の長さの違いによって列数・縮小結果が
+ *   日によって異なることは起こり得るが、それは各ページを独立に最適化した結果である。
+ * - 列数（`tryTwoColumns`が参照する幅）は、実際に抽選された`testSet.items`ではなく
+ *   `testSet.poolItems`（出題範囲に存在する全単語）を基準に判定する。ランダム出題を
+ *   繰り返すと毎回違う単語が選ばれるが、同じ出題範囲・同じ設定であれば列数・
+ *   フォントサイズは常に同じ結果になる（実際に選ばれた単語が短ければ余白が
+ *   多少増えることを許容する安全側の設計。Ver2.7）。
  */
 (function () {
   "use strict";
@@ -151,12 +156,14 @@
    * （estimateColumnCapacityUnits）と同じ計算式で、現在の文字サイズから
    * 必要なら1段ずつ下げながら「2列でも幅が収まる」組み合わせを探す。
    * 見つからない場合（下限まで下げても幅が収まらない極端に長い項目がある場合）はnullを返す。
+   * @param {Array} widthSourceItems 幅判定に使う項目集合（呼び出し元でtestSet.poolItems
+   *   ||testSet.itemsを渡す。ランダム出題時の安定性についてはfit()側のコメント参照）。
    */
-  function tryTwoColumns(items, baseLayout) {
+  function tryTwoColumns(widthSourceItems, baseLayout) {
     // 幅の判定には印刷時の補足部分縮小(Ver2.6)を織り込んだ見積もりを使う。
     // 実際に印刷される見た目（.item-supplementが小さいフォントで表示される）に
     // 合わせて2列化の可否を判定するため。
-    var maxWidth = layoutRules.computeMaxItemWidthPrintAware(items);
+    var maxWidth = layoutRules.computeMaxItemWidthPrintAware(widthSourceItems);
     var padding = baseLayout.paddingMm;
     var columnGap = layoutRules.computeColumnGap(2, padding);
     var fontSize = baseLayout.fontSizePt;
@@ -210,8 +217,13 @@
 
     // ①のヘッダー横並び化はCSS側(print.css)で常時適用済み。ここでは②の
     // 「2列レイアウトへの復帰」を、③〜⑤の数値的な縮小より先に試す。
+    // 幅の判定は testSet.items（実際に抽選された項目）ではなく testSet.poolItems
+    // （出題範囲に存在する全項目）を使う。ランダム出題のたびに違う単語が選ばれても、
+    // 列数の判定基準を「その範囲に存在し得る全単語」で揃えることで、印刷レイアウトが
+    // 抽選結果に左右されず安定する（Ver2.7）。
     if (workingLayout.columns === 1) {
-      var twoColLayout = tryTwoColumns(testSet.items, workingLayout);
+      var widthSourceItems = testSet.poolItems && testSet.poolItems.length ? testSet.poolItems : testSet.items;
+      var twoColLayout = tryTwoColumns(widthSourceItems, workingLayout);
       if (twoColLayout) {
         var twoColBase = baseFittableLayout(twoColLayout);
         var twoColHeight = measureHeightMm(twoColBase, buildElementFn);

@@ -358,3 +358,19 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   反映させるため）。丸括弧で囲まれていない付随文字列（読みが直接連結された訳文等、
   `docs/DESIGN.md`11章に既知の制約として記載）は対象外で、引き続き縮小できない
   ケースが残り得る。
+- ランダム出題時の列数・文字サイズの安定化（`poolItems`, Ver2.7）: 「出題順＝ランダム」
+  かつ出題範囲に対して出題数が少ない場合、`testGenerator.js`の`shuffle()`
+  （`Math.random()`使用）が生成のたびに異なる単語を抽選するため、②の幅安全チェック
+  （`layoutRules.computeLayout`/`printFitting.tryTwoColumns`）が「実際に抽選された
+  単語」だけを見て列数を決めていると、生成のたびに列数・フォントサイズが変わって
+  しまう不具合があった（fit()自体・計測サンドボックス・非同期処理には問題が無いことを
+  実測で確認済み。詳細な調査手順は`docs/DESIGN.md`6.4章に記録）。対策として、
+  `testGenerator.js`の各TestSetに`poolItems`（その出題範囲に存在する全単語、抽選前）を
+  追加し、`layoutRules.computeLayout(items, widthSourceItems)`・
+  `printFitting.tryTwoColumns(widthSourceItems, baseLayout)`の幅安全判定を
+  `items`（実際の出題）ではなく`poolItems`（出題範囲の全単語）基準に変更した。
+  行数に基づく段階（COUNT_TIERS）の判定は引き続き`items.length`のまま
+  （表示される問題数自体は変わらないため）。これにより、単語の抽選自体のランダム性は
+  維持したまま、印刷レイアウト（列数・フォントサイズ）は同じ設定なら常に同じ結果になる
+  （抽選結果によっては安全側に倒れて余白が多少増えることを許容するトレードオフ、
+  ユーザー確認済み）。単発モード（`generateSingle`）にも同じ仕組みを適用している。

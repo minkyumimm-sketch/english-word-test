@@ -172,13 +172,19 @@
    * 出題セットの items から、印刷・プレビュー両方に適用するレイアウトパラメータを算出する。
    * 問題ページ・解答ページとも同じ items から算出した同一の値を使うため、
    * 見た目（文字サイズ・列数）が一致する。
-   * @param {Array<{prompt:string, answer:string}>} items
+   * @param {Array<{prompt:string, answer:string}>} items 実際に出題される項目（行数・段階の判定に使う）
+   * @param {Array<{prompt:string, answer:string}>} [widthSourceItems] 幅の安全判定に使う項目集合。
+   *   省略時はitemsを使う。ランダム出題時に「実際に抽選された単語」ではなく
+   *   「出題範囲に存在する全単語」を渡すと、抽選結果に関わらず列数・文字サイズが
+   *   安定する（testGenerator.jsのpoolItemsを渡す想定、Ver2.7）。行数に基づく
+   *   段階(COUNT_TIERS)の判定には影響しない（あくまで幅の安全側判定のみ）。
    * @returns {{columns:number, fontSizePt:number, lineHeight:number, paddingMm:number, columnGapMm:number}}
    */
-  function computeLayout(items) {
+  function computeLayout(items, widthSourceItems) {
+    var widthSource = widthSourceItems && widthSourceItems.length ? widthSourceItems : items;
     var count = (items && items.length) || 1;
     var tier = pickCountTier(count);
-    var maxWidth = items && items.length ? computeMaxItemWidth(items) : 0;
+    var maxWidth = widthSource && widthSource.length ? computeMaxItemWidth(widthSource) : 0;
 
     var columns = tier.columns;
     var fontSize = tier.fontSize;

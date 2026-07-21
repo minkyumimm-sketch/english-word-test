@@ -8,8 +8,14 @@
  *     label: string,           // 表示用の見出し（例: "1〜100" "1日目（1〜100）"）
  *     direction: 'en-ja'|'ja-en',
  *     rangeLabel: string,      // "1〜100" のような順位範囲表記
- *     items: [{ no, prompt, answer }]
+ *     items: [{ no, prompt, answer }],       // 実際に出題される項目（抽選後）
+ *     poolItems: [{ no, prompt, answer }],   // 出題範囲に存在する全項目（抽選前、Ver2.7）
  *   }
+ *
+ * poolItems は、印刷レイアウト（列数・文字サイズ）の安全側判定にのみ使う
+ * （layoutRules.computeLayout / printFitting.tryTwoColumns 参照）。ランダム出題で
+ * 毎回違う単語が選ばれても、判定基準は常に「その順位範囲に存在し得る全単語」で
+ * 揃えるため、印刷レイアウトは同じ設定なら毎回同じになる（Ver2.7）。
  */
 (function () {
   "use strict";
@@ -66,6 +72,10 @@
       rangeLabel: rangeLabel(settings.startRank, settings.endRank),
       availableCount: filtered.length,
       items: buildItems(selected, settings.direction),
+      // 出題範囲に実際に存在する全単語（抽選で選ばれなかった分も含む）。
+      // ランダム出題時に毎回違う単語が選ばれても印刷レイアウト（列数・文字サイズ）が
+      // 変わらないよう、layoutRules側の幅判定はこちらを基準にする（Ver2.7）。
+      poolItems: buildItems(filtered, settings.direction),
     };
   }
 
@@ -107,6 +117,8 @@
         rangeLabel: rangeLabel(start, actualEnd),
         availableCount: filtered.length,
         items: buildItems(selected, settings.direction),
+        // generateSingleと同じ理由（Ver2.7）。この日の順位範囲に存在する全単語。
+        poolItems: buildItems(filtered, settings.direction),
         dayNumber: day,
         startRank: start,
         nominalEndRank: nominalEnd,
