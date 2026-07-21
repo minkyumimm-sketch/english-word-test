@@ -465,3 +465,49 @@ body {
   top: 0;
   width: 190mm;
 }
+
+/* 問題ページのヘッダー横並び化（print.cssの同名ルールと完全に同じ内容）。
+   printFitting.jsの高さ実測は#printFitSandbox内（screenメディア）で行うため、
+   `@media print`だけにこのルールを置くと、実際の印刷時だけ適用される
+   短いヘッダーの高さを測定できず、縮小し過ぎる/収まり判定を誤る原因になる。
+   CSSのメディアクエリは要素単位で「印刷時だけ」を再現できないため、
+   計測時にも同じ見た目になるようここに複製する。print.css側のルールを
+   変更した場合はこちらも必ず同じ内容に揃えること。 */
+#printFitSandbox .test-page[data-kind="problem"] .page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 2px;
+}
+
+#printFitSandbox .test-page[data-kind="problem"] .page-header-top,
+#printFitSandbox .test-page[data-kind="problem"] .page-name-line {
+  display: contents;
+}
+
+#printFitSandbox .test-page[data-kind="problem"] .page-title {
+  order: 1;
+  margin: 0;
+}
+
+#printFitSandbox .test-page[data-kind="problem"] .page-name {
+  order: 2;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+#printFitSandbox .test-page[data-kind="problem"] .page-score {
+  order: 3;
+  white-space: nowrap;
+}
+
+#printFitSandbox .test-page[data-kind="problem"] .page-direction {
+  order: 4;
+  flex-basis: 100%;
+}
+
+#printFitSandbox .test-page[data-kind="problem"] .page-meta {
+  order: 5;
+  margin: 0;
+}

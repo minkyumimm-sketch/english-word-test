@@ -299,22 +299,42 @@ TestSet = { id, label, direction: 'en-ja'|'ja-en', rangeLabel, availableCount,
   `<input type="file">`は同じファイルを連続選択すると`change`が発火しないブラウザの仕様が
   あるため、`formView.js`の`change`リスナーで処理後に`fileInput.value = ""`へリセットして
   いる（この対策を消さないこと）。詳細は `docs/DESIGN.md` の「10. 現在の教材表示」を参照。
-- 印刷1ページ収まり調整（Ver2.4）は`layoutRules.js`（問題数段階ベースの基本レイアウト、
-  DOM非依存）とは別ファイル`printFitting.js`に実装している。DOM計測（画面外サンドボックス
-  `#printFitSandbox`に実際の`.test-page`を組み立てて`getBoundingClientRect()`で高さを
-  実測する）を伴うため、`layoutRules.js`の「DOM操作をしない純粋関数」という設計原則を
-  壊さないよう意図的に分離した。優先順位は「①読みやすさ ②可能なら1ページ ③見た目」で、
-  余白(`paddingMm`)→セクション間隔(`--tp-section-gap-factor`)→問題間隔
-  (`--tp-row-gap-factor`)→行間(`lineHeight`)→フォントサイズ(`fontSizePt`)の順に
-  1段ずつ縮小しながら再計測する（読みやすさに影響しないレバーから先に使い切り、
-  文字そのものに関わるレバーは最後の手段にする設計）。フォントサイズ・行間の下限は
-  `layoutRules.js`の`MIN_FONT_SIZE`/`MIN_LINE_HEIGHT`をexportして共有し、二重基準に
-  ならないようにしている。全レバーを下限まで縮小しても収まらない場合は無理に縮小せず
-  複数ページを許容する（`fitsOnePage:false`）。`--tp-row-gap-factor`/
-  `--tp-section-gap-factor`は、既存の`--tp-line-height`/`--tp-padding`由来のcalc()に
-  掛け算する形で追加した（factor=1のとき既存の見た目と完全に一致するため、「収まって
-  いるものは変更しない」という要件を自然に満たす）。`.test-page`の列数(`columns`)は
-  `layoutRules.js`の安全側補正のみで決め、`printFitting.js`側では変更しない（既存の
-  長文安全策の責務を侵さないため）。計測サンドボックスの幅は印刷可能幅190mm
-  （`layoutRules.PRINTABLE_WIDTH_MM`と同じ）に固定しており、画面プレビューの表示幅とは
-  独立している（プレビューと印刷のWYSIWYGを保つため、常に印刷時と同じ折り返しで計測する）。
+- 印刷1ページ収まり調整（Ver2.4、Ver2.5で拡張）は`layoutRules.js`（問題数段階ベースの
+  基本レイアウト、DOM非依存）とは別ファイル`printFitting.js`に実装している。DOM計測
+  （画面外サンドボックス`#printFitSandbox`に実際の`.test-page`を組み立てて
+  `getBoundingClientRect()`で高さを実測する）を伴うため、`layoutRules.js`の
+  「DOM操作をしない純粋関数」という設計原則を壊さないよう意図的に分離した。
+  優先順位は「①読みやすさ ②可能なら1ページ ③見た目」で、調整レバーは
+  **①問題ページのヘッダー印刷専用横並び化（常時適用、`print.css`）→
+  ②1列になっているページの2列復帰（`printFitting.tryTwoColumns`、Ver2.5）→
+  ③余白(`paddingMm`)→④セクション間隔(`--tp-section-gap-factor`)→
+  ⑤問題間隔(`--tp-row-gap-factor`)→⑥行間(`lineHeight`)→
+  ⑦フォントサイズ(`fontSizePt`)**の順に1段ずつ試しながら再計測する（文字を
+  縮めずに済むレイアウト改善(①②)を、数値的な縮小(③〜⑦)より必ず先に試す設計。
+  読みやすさに影響しないレバーから先に使い切り、文字そのものに関わるレバーは
+  最後の手段にする）。フォントサイズ・行間の下限は`layoutRules.js`の
+  `MIN_FONT_SIZE`/`MIN_LINE_HEIGHT`をexportして共有し、二重基準にならないように
+  している。全レバーを下限まで使っても収まらない場合は無理に縮小せず複数ページを
+  許容する（`fitsOnePage:false`）。`--tp-row-gap-factor`/`--tp-section-gap-factor`は、
+  既存の`--tp-line-height`/`--tp-padding`由来のcalc()に掛け算する形で追加した
+  （factor=1のとき既存の見た目と完全に一致するため、「収まっているものは変更しない」
+  という要件を自然に満たす）。`.test-page`の列数(`columns`)は、`layoutRules.js`の
+  段階別ティア・安全側補正で決めた値を出発点としつつ、Ver2.5からは②のレバーとして
+  `printFitting.js`側でも「1列→2列に戻せないか」を試すようになった（`layoutRules.js`の
+  幅計算式`estimateColumnCapacityUnits`/`computeColumnGap`/`computeMaxItemWidth`を
+  exportして再利用し、二重基準にならないようにしている）。ただし2列から1列へ
+  落とす側の判定（6.2の長文安全策そのもの）は引き続き`layoutRules.js`の責務のまま。
+  **注意（ヘッダー横並び化とサンドボックス計測の整合性）**: ①のヘッダー横並び化は
+  `print.css`の`@media print`にのみ書くと、`#printFitSandbox`での計測は通常の画面用
+  CSS（`style.css`）で行われるため、実際に印刷した時より高い（3段ヘッダーのままの）
+  高さで計測されてしまい、不要な過剰縮小を招く。そのため`style.css`側に
+  `#printFitSandbox .test-page[data-kind="problem"] .page-header`という、
+  `print.css`の該当ルールと全く同じ内容のルールを複製している。CSSのメディア
+  クエリは要素単位で「印刷時だけ」を再現できないための対策であり、ヘッダー関連の
+  CSSを変更する場合は両ファイルを必ず揃えること。計測サンドボックスの幅は印刷可能幅
+  190mm（`layoutRules.PRINTABLE_WIDTH_MM`と同じ）に固定しており、画面プレビューの
+  表示幅とは独立している（プレビューと印刷のWYSIWYGを保つため、常に印刷時と同じ
+  折り返しで計測する）。バッチ生成時、`printFitting.fit()`は`testSet×kind`の呼び出し
+  ごとに独立して実行され状態を共有しないため、日によって単語の長さが異なれば
+  列数・縮小率が日ごとに異なる結果になることがある（各日を独立に最適化した結果であり、
+  バグではない）。

@@ -54,6 +54,56 @@ body[data-print-mode="answer"] .test-page[data-kind="problem"] {
   font-size: calc(var(--tp-font-size, 11pt) - 1pt);
 }
 
+/* 問題ページのヘッダーを印刷専用に横並び化する（Ver2.5）。
+   タイトル・名前欄・点数欄を1行にまとめることで、名前欄の罫線ボックス
+   (旧.page-name-line)を1段丸ごと省略し、縦方向を約1〜2行分節約する。
+   画面プレビュー(style.css)側は従来どおり縦積みのまま変更しない。
+   .page-header-top と .page-name-line を display:contents にして、
+   中の子要素(タイトル・出題方向・名前・点数)を.page-headerの直接の
+   flexアイテムとして扱えるようにし、DOM構造そのものは変更せずに
+   印刷時だけ配置を組み替えている。
+   注意: printFitting.jsの高さ実測用サンドボックス(#printFitSandbox)でも
+   同じ見た目で測定できるよう、style.cssの`#printFitSandbox .test-page[...]`に
+   全く同じルールを複製している。ここを変更したら必ずstyle.css側も揃えること。 */
+.test-page[data-kind="problem"] .page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 2px;
+}
+
+.test-page[data-kind="problem"] .page-header-top,
+.test-page[data-kind="problem"] .page-name-line {
+  display: contents;
+}
+
+.test-page[data-kind="problem"] .page-title {
+  order: 1;
+  margin: 0;
+}
+
+.test-page[data-kind="problem"] .page-name {
+  order: 2;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.test-page[data-kind="problem"] .page-score {
+  order: 3;
+  white-space: nowrap;
+}
+
+.test-page[data-kind="problem"] .page-direction {
+  order: 4;
+  flex-basis: 100%;
+}
+
+.test-page[data-kind="problem"] .page-meta {
+  order: 5;
+  margin: 0;
+}
+
 .item-list {
   column-count: var(--tp-columns, 2);
   column-gap: var(--tp-column-gap, 10mm);

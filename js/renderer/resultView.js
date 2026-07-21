@@ -63,8 +63,8 @@
       isAnswer
         ? null
         : dom.el("div", { class: "page-name-line" }, [
-            dom.el("span", {}, ["名前：＿＿＿＿＿＿＿＿＿＿＿＿"]),
-            dom.el("span", {}, ["点数：　　　／" + testSet.items.length]),
+            dom.el("span", { class: "page-name" }, ["名前：＿＿＿＿＿＿＿＿＿＿＿＿"]),
+            dom.el("span", { class: "page-score" }, ["点数：　　　／" + testSet.items.length]),
           ]),
     ]);
 
@@ -102,6 +102,7 @@
     pageEl.dataset.fitScaled = String(fitResult.scaled);
     pageEl.dataset.fitWithinOnePage = String(fitResult.fitsOnePage);
     pageEl.dataset.fitHeightMm = String(Math.round(fitResult.heightMm * 10) / 10);
+    pageEl.dataset.fitColumnsAdjusted = String(!!fitResult.columnsAdjusted);
     return pageEl;
   }
 

@@ -4,18 +4,27 @@
  * 名前空間: WordTestApp.printFitting
  *
  * 設計方針（優先順位: ①読みやすさ ②可能なら1ページ ③見た目の美しさ）:
- * - layoutRules.computeLayout() が出す「問題数段階ベースのレイアウト」はそのまま
- *   出発点として使う（既存の最適化を壊さない・列数の判断にも触れない）。
+ * - layoutRules.computeLayout() が出す「問題数段階ベースのレイアウト」を出発点として使う。
  * - 実際に.test-page要素を画面外サンドボックス(#printFitSandbox)へ組み立てて
  *   getBoundingClientRect()で高さを実測する。文字幅の概算(layoutRules側)と違い、
  *   高さは実際のフォントメトリクス・折り返しに左右されるため、実測が最も確実。
  * - 1ページに収まっていれば何もしない（要件どおり、収まっているものは変更しない）。
- * - 収まらない場合のみ、余白 → セクション間隔 → 問題間隔 → 行間 → 文字サイズ の順に
- *   1段ずつ縮小して再計測する（読みやすさに影響しないレバーから先に使い切る設計）。
- *   フォントサイズ・行間は可読性に直結するため最後の手段とし、かつ下限
- *   (MIN_FONT_SIZE / MIN_LINE_HEIGHT。layoutRules.jsと共通)を下回らない。
+ * - 収まらない場合、次の優先順位で1段ずつ調整して再計測する（Ver2.5）。
+ *   1. 2列レイアウトへの復帰（`tryTwoColumns`）: 問題数段階の判定やlayoutRulesの
+ *      長文安全策により1列になっているページは、文字を縮めるより先に2列へ戻せないか
+ *      試す（2列は1列よりおおよそ半分の高さで済み、可読性を犠牲にしないため）。
+ *      layoutRulesと同じ幅の安全計算を再利用し、必要なら文字サイズだけ少し
+ *      下げて2列分の幅を確保する。2列にした方が実測で低くなる場合のみ採用する。
+ *   2. 余白 → セクション間隔 → 問題間隔 → 行間 → 文字サイズ の順に1段ずつ縮小
+ *      （読みやすさに影響しないレバーから先に使い切る設計）。フォントサイズ・行間は
+ *      可読性に直結するため最後の手段とし、かつ下限(MIN_FONT_SIZE / MIN_LINE_HEIGHT。
+ *      layoutRules.jsと共通)を下回らない。
  * - 全レバーを下限まで使っても収まらない場合は、無理に縮小せず複数ページを許容する
  *   （要件: 「読めなくなるなら縮小しない」）。
+ * - 問題ページ・解答ページはこの関数の呼び出し単位（testSet×kindごと）で独立して
+ *   実行されるため、列数・縮小率は常にページごとに個別計算される。複数日分の
+ *   バッチ生成でも、日ごとの単語の長さの違いによって列数・縮小結果が日によって
+ *   異なることは起こり得るが、それは各ページを独立に最適化した結果である。
  */
 (function () {
   "use strict";
@@ -137,6 +146,34 @@
     return steps;
   }
 
+  /**
+   * 1列になっているレイアウトを2列に戻せないか試す。layoutRules.jsの長文安全策
+   * （estimateColumnCapacityUnits）と同じ計算式で、現在の文字サイズから
+   * 必要なら1段ずつ下げながら「2列でも幅が収まる」組み合わせを探す。
+   * 見つからない場合（下限まで下げても幅が収まらない極端に長い項目がある場合）はnullを返す。
+   */
+  function tryTwoColumns(items, baseLayout) {
+    var maxWidth = layoutRules.computeMaxItemWidth(items);
+    var padding = baseLayout.paddingMm;
+    var columnGap = layoutRules.computeColumnGap(2, padding);
+    var fontSize = baseLayout.fontSizePt;
+
+    while (fontSize >= MIN_FONT_SIZE - 1e-9) {
+      var capacity = layoutRules.estimateColumnCapacityUnits(fontSize, 2, padding, columnGap);
+      if (maxWidth <= capacity) {
+        return {
+          columns: 2,
+          fontSizePt: fontSize,
+          lineHeight: baseLayout.lineHeight,
+          paddingMm: padding,
+          columnGapMm: columnGap,
+        };
+      }
+      fontSize = round1(fontSize - FONT_STEP);
+    }
+    return null;
+  }
+
   function cloneLayout(layout) {
     return {
       columns: layout.columns,
@@ -161,11 +198,35 @@
     var heightMm = measureHeightMm(current, buildElementFn);
 
     if (heightMm <= TARGET_HEIGHT_MM) {
-      return { layout: current, scaled: false, heightMm: heightMm, fitsOnePage: true };
+      return { layout: current, scaled: false, heightMm: heightMm, fitsOnePage: true, columnsAdjusted: false };
     }
 
-    var steps = buildStepSequence(baseLayout);
     var scaled = false;
+    var columnsAdjusted = false;
+    var workingLayout = baseLayout;
+
+    // ①のヘッダー横並び化はCSS側(print.css)で常時適用済み。ここでは②の
+    // 「2列レイアウトへの復帰」を、③〜⑤の数値的な縮小より先に試す。
+    if (workingLayout.columns === 1) {
+      var twoColLayout = tryTwoColumns(testSet.items, workingLayout);
+      if (twoColLayout) {
+        var twoColBase = baseFittableLayout(twoColLayout);
+        var twoColHeight = measureHeightMm(twoColBase, buildElementFn);
+        if (twoColHeight < heightMm) {
+          workingLayout = twoColLayout;
+          current = twoColBase;
+          heightMm = twoColHeight;
+          scaled = true;
+          columnsAdjusted = true;
+
+          if (heightMm <= TARGET_HEIGHT_MM) {
+            return { layout: current, scaled: true, heightMm: heightMm, fitsOnePage: true, columnsAdjusted: true };
+          }
+        }
+      }
+    }
+
+    var steps = buildStepSequence(workingLayout);
 
     for (var i = 0; i < steps.length; i++) {
       var candidate = cloneLayout(current);
@@ -175,12 +236,12 @@
       scaled = true;
 
       if (heightMm <= TARGET_HEIGHT_MM) {
-        return { layout: current, scaled: true, heightMm: heightMm, fitsOnePage: true };
+        return { layout: current, scaled: true, heightMm: heightMm, fitsOnePage: true, columnsAdjusted: columnsAdjusted };
       }
     }
 
     // 可読性を守れる下限まで縮小しても収まらない場合は、無理をせず複数ページを許容する。
-    return { layout: current, scaled: scaled, heightMm: heightMm, fitsOnePage: false };
+    return { layout: current, scaled: scaled, heightMm: heightMm, fitsOnePage: false, columnsAdjusted: columnsAdjusted };
   }
 
   WordTestApp.printFitting = {

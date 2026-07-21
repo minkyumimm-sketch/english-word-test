@@ -152,11 +152,16 @@
     estimateDisplayWidth: estimateDisplayWidth,
     computeLayout: computeLayout,
     // 印刷1ページ収まり調整(printFitting.js)が、このファイルと矛盾しない
-    // 定数(用紙サイズ・可読性下限)を再利用するために公開する。
+    // 定数・計算(用紙サイズ・可読性下限・列幅の安全チェック)を再利用するために公開する。
+    // printFitting.jsが「1列に落ちているページを2列へ戻せないか」を試すとき、
+    // ここと同じ計算式で幅の安全性を判定できるようにするのが目的（Ver2.5）。
     PAGE_WIDTH_MM: PAGE_WIDTH_MM,
     PAGE_MARGIN_MM: PAGE_MARGIN_MM,
     PRINTABLE_WIDTH_MM: PRINTABLE_WIDTH_MM,
     MIN_FONT_SIZE: MIN_FONT_SIZE,
     MIN_LINE_HEIGHT: MIN_LINE_HEIGHT,
+    estimateColumnCapacityUnits: estimateColumnCapacityUnits,
+    computeColumnGap: computeColumnGap,
+    computeMaxItemWidth: computeMaxItemWidth,
   };
 })();
