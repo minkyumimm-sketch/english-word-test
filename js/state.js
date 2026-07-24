@@ -8,6 +8,7 @@
   "use strict";
 
   var WordTestApp = (window.WordTestApp = window.WordTestApp || {});
+  var csvUtil = WordTestApp.csv;
 
   var WORDS_STORAGE_KEY = "wordTestApp.lastWords.v1";
   var SETTINGS_STORAGE_KEY = "wordTestApp.lastSettings.v1";
@@ -36,6 +37,20 @@
 
   function getSourceFileName() {
     return data.sourceFileName;
+  }
+
+  /**
+   * 現在表示中の「単語テスト名」を返す（CSV書き出しファイル名・タイトル欄の初期値など、
+   * 教材名そのものではなく「今のテストを表す名前」を必要とする箇所向けの単一の入口）。
+   * Ver2.8時点ではsourceFileName（教材名）から既知の拡張子（.xlsx/.xlsm/.xls/.csv）を
+   * 除いた値を返すが、将来教材名とテスト名が分離した場合はこの関数の中身だけを
+   * 差し替えればよく、呼び出し側（main.jsのCSV書き出し・タイトル自動入力など）は
+   * 変更不要にするための間接参照。呼び出し側はgetSourceFileName()を直接使わず、
+   * 必ずこちらを使うこと（拡張子除去ロジック自体はutils/csv.jsのstripKnownExtension()に
+   * 一本化してあり、ここではそれを呼ぶだけにする）。
+   */
+  function getCurrentTestName() {
+    return csvUtil.stripKnownExtension(data.sourceFileName);
   }
 
   /**
@@ -153,6 +168,7 @@
     getWords: getWords,
     getLevels: getLevels,
     getSourceFileName: getSourceFileName,
+    getCurrentTestName: getCurrentTestName,
     updateSourceFileName: updateSourceFileName,
     hasWords: hasWords,
     setTestSets: setTestSets,

@@ -21,6 +21,7 @@
     els.loadSheetButton = dom.qs("#loadSheetButton");
     els.loadStatus = dom.qs("#loadStatus");
     els.loadActions = dom.qs("#loadActions");
+    els.exportCsvButton = dom.qs("#exportCsvButton");
     els.clearDataButton = dom.qs("#clearDataButton");
     els.materialInfo = dom.qs("#materialInfo");
 
@@ -72,6 +73,10 @@
 
     els.clearDataButton.addEventListener("click", function () {
       handlers.onClearData();
+    });
+
+    els.exportCsvButton.addEventListener("click", function () {
+      handlers.onExportCsv();
     });
 
     dom.qsa('input[name="loadMethod"]').forEach(function (radio) {
@@ -353,6 +358,14 @@
     els.startRank.max = maxRank;
   }
 
+  /**
+   * タイトル欄の値を直接設定する（教材読込時の初期値自動入力用）。
+   * @param {string} title
+   */
+  function setTestTitle(title) {
+    els.testTitle.value = title || "";
+  }
+
   WordTestApp.formView = {
     init: init,
     setLevels: setLevels,
@@ -361,6 +374,7 @@
     setSettingsPanelVisible: setSettingsPanelVisible,
     showFormError: showFormError,
     setDefaultRankRange: setDefaultRankRange,
+    setTestTitle: setTestTitle,
     getRawSettings: readRawSettings,
     setFormValues: setFormValues,
     getLoadMethod: getLoadMethod,

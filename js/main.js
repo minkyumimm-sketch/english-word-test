@@ -6,6 +6,7 @@
 
   var WordTestApp = window.WordTestApp || {};
   var state = WordTestApp.state;
+  var csvUtil = WordTestApp.csv;
   var excelLoader = WordTestApp.excelLoader;
   var googleSheetLoader = WordTestApp.googleSheetLoader;
   var testGenerator = WordTestApp.testGenerator;
@@ -31,6 +32,12 @@
     formView.setLoadActionsVisible(true);
     formView.setSettingsPanelVisible(true);
     formView.renderMaterialInfo({ name: fileName, method: method });
+    // タイトル欄の初期値を、読み込んだ教材の単語テスト名に更新する。教材読込時にのみ
+    // 発生するイベントであり、それ以外（入力欄の変更・生成予定の再計算等）ではタイトル欄に
+    // 一切触れないため、ユーザーが手動で書き換えたタイトルを途中で消してしまうことはない。
+    // アプリ起動直後の復元フローでは、この直後にrestorePersistedSettings()が前回保存した
+    // タイトルで上書きするため、最終的にはそちらが優先される。
+    formView.setTestTitle(state.getCurrentTestName());
     updateGenerationPreview();
   }
 
@@ -104,6 +111,7 @@
 
       state.updateSourceFileName(title);
       formView.renderMaterialInfo({ name: title, method: "googleSheet" });
+      formView.setTestTitle(state.getCurrentTestName());
       state.persistWordsToLocalStorage();
     });
   }
@@ -119,6 +127,36 @@
       method: method,
       sheetUrl: sheetUrlOverride !== undefined ? sheetUrlOverride : formView.getSheetUrl(),
     });
+  }
+
+  /**
+   * 読み込んだ単語データ一覧をCSVファイルとしてダウンロードする。
+   * ファイル名の初期値は現在の単語テスト名（state.getCurrentTestName()）から組み立てる
+   * （教材を読み込み直せば、次回のダウンロード時には新しい名前が使われる）。
+   * sourceFileNameへは直接依存させず、必ずgetCurrentTestName()経由にすること
+   * （教材名とテスト名が将来分離しても、この関数を変更せずに済むようにするため）。
+   * 保存ダイアログでの名称変更はブラウザの標準機能に委ねる。
+   */
+  function handleExportCsv() {
+    var words = state.getWords();
+    if (!words.length) return;
+
+    var rows = [["順位", "レベル", "ページ", "英語", "訳"]];
+    words.forEach(function (w) {
+      rows.push([w.rank, w.level, w.page, w.en, w.ja]);
+    });
+
+    // 先頭にBOMを付与し、Excelで開いた際に文字化けしないようにする。
+    var BOM = String.fromCharCode(0xfeff);
+    var blob = new Blob([BOM + csvUtil.stringify(rows)], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = csvUtil.buildFileName(state.getCurrentTestName());
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function handleClearData() {
@@ -217,6 +255,7 @@
     formView.init({
       onFileSelected: handleFileSelected,
       onClearData: handleClearData,
+      onExportCsv: handleExportCsv,
       onGenerate: handleGenerate,
       onLoadSheet: handleLoadSheet,
       onPreviewInputsChanged: updateGenerationPreview,
